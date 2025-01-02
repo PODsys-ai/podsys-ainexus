@@ -249,7 +249,7 @@ autoinstall:
     - curtin in-target --target=/target -- chmod 755 install.sh || true
     - curtin in-target --target=/target -- /install.sh ${manager_ip} ${download_mode}
     - umount /target/podsys || true
-    - rm -f  /target/install.sh /target/iplist.txt  || true
+    - rm -f  /target/install.sh || true
     - cp /autoinstall.yaml /target/podsys/autoinstall.yaml || true
     - reboot
   storage:

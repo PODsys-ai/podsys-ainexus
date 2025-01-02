@@ -16,51 +16,32 @@ set_limit() {
 }
 
 conf_ip() {
-    if [ -f "/iplist.txt" ]; then
-        SN=$(dmidecode -t 1 | grep Serial | awk -F : '{print $2}' | awk -F ' ' '{print $1}')
-        IP=$(grep $SN /iplist.txt | awk '{print $3}')
-        GATEWAY=$(grep $SN /iplist.txt | awk '{print $4}')
-        DNS=$(grep $SN /iplist.txt | awk '{print $5}')
-        docker0_ip=$(grep $SN /iplist.txt | awk '{print $7}')
+    if [ "$http_code" -eq 200 ]; then
+        h=$(cat /etc/netplan/00-installer-config.yaml | grep -n dhcp | awk -F ":" '{print $1}' | awk 'NR==1 {print}')
+        sed -i ${h}s/true/false/ /etc/netplan/00-installer-config.yaml
+        h=$(($h + 1))
+        sed -i "${h}i \      addresses: [$IP]" /etc/netplan/00-installer-config.yaml
 
-        if [ -n "$IP" ]; then
-            h=$(cat /etc/netplan/00-installer-config.yaml | grep -n dhcp | awk -F ":" '{print $1}' | awk 'NR==1 {print}')
-            sed -i ${h}s/true/false/ /etc/netplan/00-installer-config.yaml
+        if [ -n "$GATEWAY" ] && [ "$GATEWAY" != "none" ]; then
             h=$(($h + 1))
-            sed -i "${h}i \      addresses: [$IP]" /etc/netplan/00-installer-config.yaml
-
-            if [ -n "$GATEWAY" ] && [ "$GATEWAY" != "none" ]; then
-                h=$(($h + 1))
-                sed -i "${h}i \      routes:" /etc/netplan/00-installer-config.yaml
-                h=$(($h + 1))
-                sed -i "${h}i \        - to: default" /etc/netplan/00-installer-config.yaml
-                h=$(($h + 1))
-                sed -i "${h}i \          via: $GATEWAY" /etc/netplan/00-installer-config.yaml
-            else
-                echo "$SN NO GATEWAY" >>/podsys/log/conf_ip.log
-            fi
-
-            if [ -n "$DNS" ] && [ "$DNS" != "none" ]; then
-                h=$(($h + 1))
-                sed -i "${h}i \      nameservers:" /etc/netplan/00-installer-config.yaml
-                h=$(($h + 1))
-                sed -i "${h}i \        addresses: [${DNS}]" /etc/netplan/00-installer-config.yaml
-            else
-                echo "$SN NO DNS" >>/podsys/log/conf_ip.log
-            fi
+            sed -i "${h}i \      routes:" /etc/netplan/00-installer-config.yaml
+            h=$(($h + 1))
+            sed -i "${h}i \        - to: default" /etc/netplan/00-installer-config.yaml
+            h=$(($h + 1))
+            sed -i "${h}i \          via: $GATEWAY" /etc/netplan/00-installer-config.yaml
         else
-            network_interface=$(ip route | grep default | awk 'NR==1 {print $5}')
-            DHCP_IP=$(ip addr show $network_interface | grep 'inet\b' | awk '{print $2}' | cut -d/ -f1)
-            SUBNET_MASK=$(ip addr show $network_interface | grep 'inet\b' | awk '{print $2}' | cut -d/ -f2)
-            h=$(cat /etc/netplan/00-installer-config.yaml | grep -n dhcp | awk -F ":" '{print $1}' | awk 'NR==1 {print}')
-            sed -i ${h}s/true/false/ /etc/netplan/00-installer-config.yaml
-            h=$(($h + 1))
-            sed -i "${h}i \      addresses: [$DHCP_IP/$SUBNET_MASK]" /etc/netplan/00-installer-config.yaml
-            curl -X POST -d "serial=$SN" http://"$1":5000/receive_serial_ip
-            echo "The IP address of $SN is not in the iplist, so its DHCP address will be used statically." >>/podsys/log/conf_ip.log
-            echo -e "$SN\tnode${SN}\t${DHCP_IP}/${SUBNET_MASK}\tnone\tnone\tnone\tnone" >>/podsys/iplist.txt
+            echo "$SN NO GATEWAY" >>/podsys/log/conf_ip.log
         fi
 
+        if [ -n "$DNS" ] && [ "$DNS" != "none" ]; then
+            h=$(($h + 1))
+            sed -i "${h}i \      nameservers:" /etc/netplan/00-installer-config.yaml
+            h=$(($h + 1))
+            sed -i "${h}i \        addresses: [${DNS}]" /etc/netplan/00-installer-config.yaml
+        else
+            echo "$SN NO DNS" >>/podsys/log/conf_ip.log
+        fi
+        
         if [ -n "$docker0_ip" ] && [ "$docker0_ip" != "none" ]; then
             mkdir -p /etc/docker
             if [ ! -f /etc/docker/daemon.json ]; then
@@ -82,7 +63,7 @@ conf_ip() {
         h=$(($h + 1))
         sed -i "${h}i \      addresses: [$DHCP_IP/$SUBNET_MASK]" /etc/netplan/00-installer-config.yaml
         curl -X POST -d "serial=$SN" http://"$1":5000/receive_serial_ip
-        echo "$SN No iplist file, so its DHCP address will be used statically." >>/podsys/log/conf_ip.log
+        echo "$SN NO IP, DHCP address will be used statically." >>/podsys/log/conf_ip.log
         echo -e "$SN\tnode${SN}\t${DHCP_IP}/${SUBNET_MASK}\tnone\tnone\tnone\tnone" >>/podsys/iplist.txt
     fi
     # disable cloud init networkconfig
@@ -102,11 +83,7 @@ install_packages_from_dir() {
 
 install_compute() {
     local method=$2
-    SN=$(dmidecode -t 1 | grep Serial | awk -F : '{print $2}' | awk -F ' ' '{print $1}')
-    HOSTNAME=$(grep $SN /iplist.txt | awk '{print $2}')
-    if [ -z "$HOSTNAME" ]; then
-        HOSTNAME=$SN
-    fi
+
     timestamp=$(date +%Y-%m-%d_%H-%M-%S)
     install_log="/podsys/log/${HOSTNAME}_install_${timestamp}.log"
     log_name="${HOSTNAME}_install_${timestamp}.log"
@@ -329,10 +306,25 @@ install_compute() {
 
 }
 
-wget -q http://$1:8800/workspace/iplist.txt || true
+
 # install compute
-install_compute "$1" "$2"
 SN=$(dmidecode -t 1 | grep Serial | awk -F : '{print $2}' | awk -F ' ' '{print $1}')
+response=$(curl -s -w "\n%{http_code}" -X POST -d "serial=$SN" http://$1:5000/request_iplist)
+
+http_code=$(echo "$response" | tail -n 1)
+json_response=$(echo "$response" | sed '$d')
+if [ "$http_code" -eq 200 ]; then
+    HOSTNAME=$(echo "$json_response" | grep -oP '"hostname":\s*"\K[^"]+')
+    IP=$(echo "$response" | grep -oP '"ip":\s*"\K[^"]+')
+    GATEWAY=$(echo "$response" | grep -oP '"gateway":\s*"\K[^"]+')
+    DNS=$(echo "$json_response" | grep -oP '"dns":\s*"\K[^"]+')
+    docker0_ip=$(echo "$json_response" | grep -oP '"dockerip":\s*"\K[^"]+')
+else
+    HOSTNAME="node${SN}"
+fi
+
+
+install_compute "$1" "$2" 
 curl -X POST -d "serial=$SN" http://"$1":5000/receive_serial_e
 
 # set limits
