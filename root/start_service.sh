@@ -16,12 +16,12 @@ get_subnet_mask() {
 }
 
 ISO=ubuntu-22.04.5-live-server-amd64.iso
-manager_ip=$(cat /var/www/html/workspace/config.yaml | grep "manager_ip" | cut -d ":" -f 2 | tr -d ' ')
-manager_nic=$(cat /var/www/html/workspace/config.yaml | grep "manager_nic" | cut -d ":" -f 2 | tr -d ' ')
-compute_storage=$(cat /var/www/html/workspace/config.yaml | grep "compute_storage" | cut -d ":" -f 2 | tr -d ' ')
-compute_passwd=$(cat /var/www/html/workspace/config.yaml | grep "compute_passwd" | cut -d ":" -f 2 | tr -d ' ')
-dhcp_s=$(cat /var/www/html/workspace/config.yaml | grep "dhcp_s" | cut -d ":" -f 2 | tr -d ' ')
-dhcp_e=$(cat /var/www/html/workspace/config.yaml | grep "dhcp_e" | cut -d ":" -f 2 | tr -d ' ')
+manager_ip=$(grep "manager_ip" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+manager_nic=$(grep "manager_nic" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+compute_storage=$(grep "compute_storage" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+compute_passwd=$(grep "compute_passwd" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+dhcp_s=$(grep "dhcp_s" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+dhcp_e=$(grep "dhcp_e" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
 subnet_mask=$(get_subnet_mask ${manager_ip})
 
 echo -e "\033[43;31m "Welcome to the cluster deployment software v3.0"\033[0m"

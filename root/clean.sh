@@ -21,4 +21,5 @@ rm -f /var/log/dpkg.log
 rm -f /var/log/apt/eipp.log.xz
 rm -f /var/log/apt/history.log
 rm -f /var/log/apt/term.log
+rm -rf /tmp/*
 ps aux | grep podsys-monitor
