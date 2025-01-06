@@ -16,12 +16,12 @@ get_subnet_mask() {
 }
 
 ISO=ubuntu-22.04.5-live-server-amd64.iso
-manager_ip=$(grep "manager_ip" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
-manager_nic=$(grep "manager_nic" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
-compute_storage=$(grep "compute_storage" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
-compute_passwd=$(grep "compute_passwd" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
-dhcp_s=$(grep "dhcp_s" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
-dhcp_e=$(grep "dhcp_e" /var/www/html/workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+manager_ip=$(grep "manager_ip" /workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+manager_nic=$(grep "manager_nic" /workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+compute_storage=$(grep "compute_storage" /workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+compute_passwd=$(grep "compute_passwd" /workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+dhcp_s=$(grep "dhcp_s" /workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
+dhcp_e=$(grep "dhcp_e" /workspace/config.yaml | cut -d ":" -f 2 | tr -d '[:space:]')
 subnet_mask=$(get_subnet_mask ${manager_ip})
 
 echo -e "\033[43;31m "Welcome to the cluster deployment software v3.0"\033[0m"
@@ -33,14 +33,14 @@ echo " |_|      \___/  |____/  |____/    |_|   |____/ ";
 echo
 
 echo -e "\033[31mdhcp-config : /etc/dnsmasq.conf\033[0m"
-echo -e "\033[31muser-data   : /var/www/html/jammy/user-data\033[0m"
+echo -e "\033[31muser-data   : /jammy/user-data\033[0m"
 
 if [ "${download_mode}" == "p2p" ]; then
   nohup /root/opentracker > /dev/null 2>&1 &
-  mkdir -p "/var/www/html/workspace/torrents"
-  transmission-create -o /var/www/html/workspace/torrents/drivers.torrent -t http://${manager_ip}:6969/announce -p /var/www/html/workspace/drivers/
-  chmod 755 -R /var/www/html/workspace/torrents
-  nohup ctorrent -s /var/www/html/workspace/drivers /var/www/html/workspace/torrents/drivers.torrent > /dev/null 2>&1 &
+  mkdir -p "/workspace/torrents"
+  transmission-create -o /workspace/torrents/drivers.torrent -t http://${manager_ip}:6969/announce -p /workspace/drivers/
+  chmod 755 -R /workspace/torrents
+  nohup ctorrent -s /workspace/drivers /workspace/torrents/drivers.torrent > /dev/null 2>&1 &
   sleep 2s
 fi
 
@@ -58,8 +58,8 @@ dhcp-match=set:efi-x86_64,option:client-arch,9
 dhcp-boot=tag:bios,pxelinux.0
 dhcp-boot=tag:efi-x86_64,bootx64.efi
 enable-tftp
-tftp-root=/srv/tftp/pxe_ubuntu2204
-log-facility=/var/www/html/workspace/log/dnsmasq.log
+tftp-root=/tftp/pxe_ubuntu2204
+log-facility=/workspace/log/dnsmasq.log
 log-queries
 log-dhcp
 EOF
@@ -78,8 +78,8 @@ dhcp-boot=tag:bios,undionly.kpxe
 dhcp-boot=tag:x64-uefi,snponly.efi
 dhcp-boot=tag:ipxe,ubuntu2204.cfg
 enable-tftp
-tftp-root=/srv/tftp/ipxe_ubuntu2204
-log-facility=/var/www/html/workspace/log/dnsmasq.log
+tftp-root=/tftp/ipxe_ubuntu2204
+log-facility=/workspace/log/dnsmasq.log
 log-queries
 log-dhcp
 EOF
@@ -117,7 +117,7 @@ export linux_gfx_mode
 
 menuentry 'Ubuntu 22.04.5 autoinstall' {
         gfxmode \$linux_gfx_mode
-        linux /vmlinuz \$vt_handoff root=/dev/ram0 ramdisk_size=2000000 ip=dhcp url=http://${manager_ip}:8800/workspace/${ISO} autoinstall ds=nocloud-net\;s=http://${manager_ip}:8800/jammy/ ---
+        linux /vmlinuz \$vt_handoff root=/dev/ram0 ramdisk_size=2000000 ip=dhcp url=http://${manager_ip}:5000/workspace/${ISO} autoinstall ds=nocloud-net\;s=http://${manager_ip}:5000/jammy/ ---
         initrd /initrd
 }
 EOF
@@ -138,7 +138,7 @@ MENU COLOR BORDER   37;40 #ffffffff #00000000
 LABEL Ubuntu Server 22.04.5
     kernel /vmlinuz
     initrd /initrd
-    append root=/dev/ram0 ip=dhcp ramdisk_size=2000000 url=http://${manager_ip}:8800/workspace/${ISO} autoinstall ds=nocloud-net;s=http://${manager_ip}:8800/jammy/  cloud-config-url=/dev/null
+    append root=/dev/ram0 ip=dhcp ramdisk_size=2000000 url=http://${manager_ip}:5000/workspace/${ISO} autoinstall ds=nocloud-net;s=http://${manager_ip}:5000/jammy/  cloud-config-url=/dev/null
 EOF
 )
 
@@ -167,30 +167,33 @@ choose --timeout \${menu-timeout} --default \${menu-default} selected || goto ca
 goto \${selected}
 
 :install-os
-set server http://${manager_ip}:8800/
+set server http://${manager_ip}:5000/
 initrd \${server}jammy/initrd
 kernel \${server}jammy/vmlinuz initrd=initrd ip=dhcp url=\${server}workspace/${ISO} autoinstall ds=nocloud-net;s=\${server}jammy/ root=/dev/ram0 cloud-config-url=/dev/null
 boot
 EOF
 )
 
-if [ "$mode" = "pxe_ubuntu2204" ]; then
-   echo "$dnsmasq_conf"        > /etc/dnsmasq.conf
-   echo "$grub_cfg"            > /srv/tftp/pxe_ubuntu2204/grub/grub.cfg
-   echo "$pxelinux_cfg_default"   > /srv/tftp/pxe_ubuntu2204/pxelinux.cfg/default
-elif [ "$mode" = "ipxe_ubuntu2204" ]; then
+
+if [ "$mode" = "ipxe_ubuntu2204" ]; then
    echo "$dnsmasq_conf_ipxe" > /etc/dnsmasq.conf
-   echo "$ipxe_ubuntu2204_cfg" > /srv/tftp/ipxe_ubuntu2204/ubuntu2204.cfg
-   cp /srv/tftp/pxe_ubuntu2204/vmlinuz /var/www/html/jammy/
-   cp /srv/tftp/pxe_ubuntu2204/initrd  /var/www/html/jammy/
+   echo "$ipxe_ubuntu2204_cfg" > /tftp/ipxe_ubuntu2204/ubuntu2204.cfg
+elif [ "$mode" = "pxe_ubuntu2204" ]; then
+   echo "$dnsmasq_conf"        > /etc/dnsmasq.conf
+   echo "$grub_cfg"            > /tftp/pxe_ubuntu2204/grub/grub.cfg
+   echo "$pxelinux_cfg_default"   > /tftp/pxe_ubuntu2204/pxelinux.cfg/default
+   cp /jammy/vmlinuz /tftp/pxe_ubuntu2204/vmlinuz
+   cp /jammy/initrd   /tftp/pxe_ubuntu2204/initrd
 else
-   echo "$dnsmasq_conf" > /etc/dnsmasq.conf
-   echo "$grub_cfg"     > /srv/tftp/pxe_ubuntu2204/grub/grub.cfg
+   echo "$dnsmasq_conf_ipxe" > /etc/dnsmasq.conf
+   echo "$ipxe_ubuntu2204_cfg" > /tftp/ipxe_ubuntu2204/ubuntu2204.cfg
 fi
 
-if [ -s /var/www/html/workspace/mac_ip.txt ]; then
+
+
+if [ -s /workspace/mac_ip.txt ]; then
     echo "dhcp-ignore=tag:!known" >> /etc/dnsmasq.conf
-    echo "dhcp-hostsfile=/var/www/html/workspace/mac_ip.txt" >> /etc/dnsmasq.conf
+    echo "dhcp-hostsfile=/workspace/mac_ip.txt" >> /etc/dnsmasq.conf
 fi
 
 ################################### get user-data
@@ -240,12 +243,12 @@ autoinstall:
     install-server: true
   early-commands:
     - echo "${NEW_PUB_KEY}" >/root/.ssh/authorized_keys
-    - wget http://${manager_ip}:8800/jammy/preseed.sh && chmod 755 preseed.sh && bash preseed.sh ${manager_ip} ${compute_storage}
+    - wget http://${manager_ip}:5000/jammy/preseed.sh && chmod 755 preseed.sh && bash preseed.sh ${manager_ip} ${compute_storage}
   late-commands:
     - cp /etc/netplan/00-installer-config.yaml /target/etc/netplan/00-installer-config.yaml
     - mkdir /target/root/.ssh && echo "${NEW_PUB_KEY}" >/target/root/.ssh/authorized_keys
-    - wget http://${manager_ip}:8800/jammy/preseed1.sh && chmod 755 preseed1.sh && bash preseed1.sh ${manager_ip} ${download_mode}
-    - curtin in-target --target=/target -- wget http://${manager_ip}:8800/jammy/install.sh
+    - wget http://${manager_ip}:5000/jammy/preseed1.sh && chmod 755 preseed1.sh && bash preseed1.sh ${manager_ip} ${download_mode}
+    - curtin in-target --target=/target -- wget http://${manager_ip}:5000/jammy/install.sh
     - curtin in-target --target=/target -- chmod 755 install.sh || true
     - curtin in-target --target=/target -- /install.sh ${manager_ip} ${download_mode}
     - umount /target/podsys || true
@@ -336,19 +339,17 @@ autoinstall:
       id: mount-0
 EOF
 )
-echo -e "$userdata" >> /var/www/html/jammy/user-data
+echo -e "$userdata" >> /jammy/user-data
 
 ########################################start server
 echo
 sleep 1
 echo "starting services: "
-service apache2 start
 service dnsmasq start
 echo
 sleep 1
 echo "checking services: "
-service apache2 status
 service dnsmasq status
 echo
-chmod 755 -R /var/www/html/workspace/log
+chmod 755 -R /workspace/log
 start_flask_app

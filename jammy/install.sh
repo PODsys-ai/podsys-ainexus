@@ -98,7 +98,7 @@ install_compute() {
     apt purge -y unattended-upgrades >>$install_log
 
     if [ "$method" == "http" ]; then
-        wget -q http://$1:8800/workspace/drivers/common.tgz
+        wget -q http://$1:5000/workspace/drivers/common.tgz
         tar -xzf common.tgz
         install_packages_from_dir "./common"
     elif [ "$method" == "nfs" ]; then
@@ -107,7 +107,7 @@ install_compute() {
     elif [ "$method" == "p2p" ]; then
         install_packages_from_dir "./common"
     else
-        wget -q http://$1:8800/workspace/drivers/common.tgz
+        wget -q http://$1:5000/workspace/drivers/common.tgz
         tar -xzf common.tgz
         install_packages_from_dir "./common"
     fi
@@ -121,7 +121,7 @@ install_compute() {
         echo -e "\e[32m$(date +%Y-%m-%d_%H-%M-%S) Start install MLNX------\e[0m" >>$install_log
 
         if [ "$method" == "http" ]; then
-            wget -q http://$1:8800/workspace/drivers/ib.tgz
+            wget -q http://$1:5000/workspace/drivers/ib.tgz
             tar -xzf ib.tgz
             ./ib/${IB}/mlnxofedinstall --without-fw-update --with-nfsrdma --all --force >>$install_log
         elif [ "$method" == "nfs" ]; then
@@ -130,7 +130,7 @@ install_compute() {
         elif [ "$method" == "p2p" ]; then
             ./ib/${IB}/mlnxofedinstall --without-fw-update --with-nfsrdma --all --force >>$install_log
         else
-            wget -q http://$1:8800/workspace/drivers/ib.tgz
+            wget -q http://$1:5000/workspace/drivers/ib.tgz
             tar -xzf ib.tgz
             ./ib/${IB}/mlnxofedinstall --without-fw-update --with-nfsrdma --all --force >>$install_log
         fi
@@ -152,7 +152,7 @@ install_compute() {
         echo "options nouveau modeset=0" | tee -a /etc/modprobe.d/nouveau-blacklist.conf
 
         if [ "$method" == "http" ]; then
-            wget -q http://$1:8800/workspace/drivers/nvidia.tgz
+            wget -q http://$1:5000/workspace/drivers/nvidia.tgz
             tar -xzf nvidia.tgz
             ./nvidia/${NVIDIA_DRIVER} --accept-license --no-questions --no-install-compat32-libs --ui=none --disable-nouveau >>$install_log
         elif [ "$method" == "nfs" ]; then
@@ -160,7 +160,7 @@ install_compute() {
         elif [ "$method" == "p2p" ]; then
             ./nvidia/${NVIDIA_DRIVER} --accept-license --no-questions --no-install-compat32-libs --ui=none --disable-nouveau >>$install_log
         else
-            wget -q http://$1:8800/workspace/drivers/nvidia.tgz
+            wget -q http://$1:5000/workspace/drivers/nvidia.tgz
             tar -xzf nvidia.tgz
             ./nvidia/${NVIDIA_DRIVER} --accept-license --no-questions --no-install-compat32-libs --ui=none --disable-nouveau >>$install_log
         fi
@@ -236,7 +236,7 @@ install_compute() {
         # Install CUDA
         echo -e "\e[32m$(date +%Y-%m-%d_%H-%M-%S) Start install cuda------\e[0m" >>$install_log
         if [ "$method" == "http" ]; then
-            wget -q http://$1:8800/workspace/drivers/${CUDA}
+            wget -q http://$1:5000/workspace/drivers/${CUDA}
             chmod 755 ${CUDA}
             ./${CUDA} --silent --toolkit >>$install_log
         elif [ "$method" == "nfs" ]; then
@@ -246,7 +246,7 @@ install_compute() {
             ./${CUDA} --silent --toolkit >>$install_log
             curl -X POST -d "file=cuda" "http://$1:5000/receive_nfs_status"
         else
-            wget -q http://$1:8800/workspace/drivers/${CUDA}
+            wget -q http://$1:5000/workspace/drivers/${CUDA}
             chmod 755 ${CUDA}
             ./${CUDA} --silent --toolkit >>$install_log
         fi

@@ -5,7 +5,7 @@ G_SERVER_IP="$1"
 G_DOWNLOAD_MODE="$2"
 
 setup_nfs() {
-    wget http://${G_SERVER_IP}:8800/workspace/nfs.tgz
+    wget http://${G_SERVER_IP}:5000/workspace/nfs.tgz
     tar -xzf nfs.tgz
     dpkg -i nfs/*.deb || true
     rm /lib/systemd/system/nfs-common.service || true
