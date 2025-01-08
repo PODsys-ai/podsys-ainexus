@@ -1,7 +1,7 @@
 #!/bin/bash
 cd $(dirname $0)
 start_flask_app() {
-        nohup  /root/podsys-monitor  > /dev/null 2>&1 &
+        nohup  /root/podsys-core  > /dev/null 2>&1 &
 }
 
 get_subnet_mask() {

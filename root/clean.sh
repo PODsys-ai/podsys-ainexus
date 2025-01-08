@@ -19,4 +19,4 @@ rm .viminfo
 rm -rf /tmp/*
 cat /dev/null > ~/.bash_history
 
-ps aux | grep podsys-monitor
+ps aux | grep podsys-core
